@@ -34,11 +34,16 @@ app.get('/', (요청, 응답)=> {
 
 //누가 /news로 접속하면 db에 데이터 저장해보기 연습
 app.get('/news', (요청, 응답)=> {
-    db.collection('post').insertOne({title : '어쩌구'})
-    // 응답.send('오늘 비옴') //이거 보내주셈
+    // db.collection('post').insertOne({title : '어쩌구'})
+    응답.send('오늘 비옴') 
 })
 
-
+//컬렉션의 모든 document 출력하는방법!! -> 그냥 외워두기 
+app.get('/list', async (요청, 응답)=> {
+    let result = await db.collection('post').find().toArray() //await을 써야 다음줄 안넘어가고 실행 기다림
+    console.log(result)  //터미널에 출력시켜줌
+    응답.send('db에 있던 게시물')
+})
 
 
 

@@ -4,6 +4,9 @@ const app = express()
 
 //폴더를 server.js에 등록해두어야 폴더안의 css, js파일, 이미지 파일 등의 파일들을 html에서 사용가능 
 app.use(express.static(__dirname+'/public'))
+//ejs세팅끝 - html문서에 DB데이터 꽂기위한 작업
+//html파일에 데이터 넣고 싶으면 .ejs파일로 만들면 가능. html파일과 거의 같다고 보면됨(views폴더 만들고 그 안에 넣는게 국룰)
+app.set('view engine','ejs')
 
 
 //몽고디비를 서버와 연결해주는 코드 - url값은 몽고디비 -database- connect-drivers에 있는 링크넣기. 그후 내 db접속용 아이디+비번 링크중간에 넣기
@@ -41,30 +44,16 @@ app.get('/news', (요청, 응답)=> {
 //컬렉션의 모든 document 출력하는방법!! -> 그냥 외워두기 
 app.get('/list', async (요청, 응답)=> {
     let result = await db.collection('post').find().toArray() //await을 써야 다음줄 안넘어가고 실행 기다림
-    console.log(result)  //터미널에 출력시켜줌
-    응답.send('db에 있던 게시물')
+    
+    //ejs파일을 유저에게 보내줄때 render 사용함. ejs파일 경로값 넣기. 기본 경로는 views폴더로 되어서 views폴더 안에 있는 파일은 그냥 이름만 적으면됨
+    // 서버데이터를 ejs파일에 넣으려면, 
+    // 1. ejs파일로 데이터 전송 (2번째 인자에 object자료형으로 넣기)
+    // 2. ejs 파일 안에서 <%=데이터이름%> 
+    응답.render('list.ejs', {posts : result} )
+
 })
 
 
-/*
-자바스크립트 문법 설명 - 이걸 통해 몽고db 컬렉션안의 원하는 데이터만 뽑아올 수 있음 
-
-1. array 자료형
-var a = [1,4,5]
-
-출력할땐 : a[0], a[1] 등등
-
-
-2. object 자료형 (여러 자료형을 키값 형태로 저장)
-
-var b = {name : 'kim', age : 20 }
-
-출력할땐 : b.name 등등
-
---> 몽고db에서 가져온 전체 컬렉션은 [{},{}] 이런식으로
-array안에 object형 들어있음
-
-*/
 
 
 

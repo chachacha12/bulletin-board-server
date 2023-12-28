@@ -50,9 +50,15 @@ app.get('/list', async (요청, 응답)=> {
     // 1. ejs파일로 데이터 전송 (2번째 인자에 object자료형으로 넣기)
     // 2. ejs 파일 안에서 <%=데이터이름%> 
     응답.render('list.ejs', {posts : result} )
-
 })
 
+//컬렉션의 모든 document 출력하는방법!! -> 그냥 외워두기 
+app.get('/time', async (요청, 응답)=> {
+  let t = new Date()
+
+  응답.render('time.ejs', {time : t} )
+
+})
 
 
 

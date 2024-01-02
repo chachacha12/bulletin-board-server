@@ -70,8 +70,24 @@ app.get('/write', (요청, 응답)=> {
 })
 
 //클라이언트에서 /add로 post메소드로 보낸 데이터를 서버가 받아줌
-app.post('/add', (요청, 응답)=> {
+app.post('/add', async (요청, 응답)=> {
   console.log(요청.body)  //이러면 자바스크립트 object자료형으로 출력됨 
+
+  //try문 실행하다가 혹시 에러나면 catch문 수행 (db에 데이터 넣는 로직 등 혹시 에러 가능한 곳에 사용)
+  try {
+    //이상한 데이터는 db저장 막기 위한 검사
+    if(요청.body.title ==''){
+      응답.send('제목 입력해라')
+    }else{
+      //db에 데이터 저장하는 법
+      await db.collection('post').insertOne({title : 요청.body.title, content : 요청.body.content} )
+      //유저가 무한대기상태에 빠질 수 있기에 서버기능 끝나면 항상 응답 보내주는게 좋음
+      응답.redirect('/list') //redirect는 다른 페이지로 이동시켜줌
+    }
+  } catch (e) {
+    console.log(e) //에러 메시지 출력해서 어떤 에러인지 터미널에서 확인가능
+    응답.status(500).send('서버에러남')  //500은 서버 잘못으로 인한 에러라는뜻
+  }
 
 })
 

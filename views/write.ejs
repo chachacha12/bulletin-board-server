@@ -7,17 +7,14 @@
 </head>
 <body class="grey-bg">
 
-
     <%- include('nav.ejs') %>
 
-    <div class="white-bg">
-
-      <% for(let i=0; i< posts.length; i++) { %>
-        <div class="list-box">
-            <h4> <%= posts[i].title %> </h4>
-            <p> <%= posts[i].content %> </p>
-        </div>
-      <% } %>
+    <form class="form-box" action="/add" method="post" >
+        <h4>글쓰기</h4>
+        <input name="title" >
+        <input name="content" >
+        <button type="submit">전송</button>
+    </form> 
     
 
     </div> 

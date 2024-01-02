@@ -15,7 +15,7 @@ app.use(express.urlencoded({extended:true}))
 
 
 //몽고디비를 서버와 연결해주는 코드 - url값은 몽고디비 -database- connect-drivers에 있는 링크넣기. 그후 내 db접속용 아이디+비번 링크중간에 넣기
-const { MongoClient } = require('mongodb')
+const { MongoClient, ObjectId } = require('mongodb')
 let db
 const url = 'mongodb+srv://chachacha:chaminwoo0106!@cluster0.az9nsfq.mongodb.net/?retryWrites=true&w=majority'
 new MongoClient(url).connect().then((client)=>{
@@ -69,7 +69,7 @@ app.get('/write', (요청, 응답)=> {
   응답.render('write.ejs') 
 })
 
-//클라이언트에서 /add로 post메소드로 보낸 데이터를 서버가 받아줌
+//클라이언트에서 /add로 post메소드로 보낸 데이터를 서버가 받아서 db에 저장해주는 작업
 app.post('/add', async (요청, 응답)=> {
   console.log(요청.body)  //이러면 자바스크립트 object자료형으로 출력됨 
 
@@ -88,9 +88,20 @@ app.post('/add', async (요청, 응답)=> {
     console.log(e) //에러 메시지 출력해서 어떤 에러인지 터미널에서 확인가능
     응답.status(500).send('서버에러남')  //500은 서버 잘못으로 인한 에러라는뜻
   }
-
 })
 
+//글 눌렀을때 글 상세페이지 가는 로직 만들어볼거임
+//유저가 /detail/어쩌구 접속하면 {_id:어쩌구}글을 db에서 찾아서 ejs파일에 박아서 유저에게 보내줄거임
+//URL파라미터 문법 사용하면 비슷한 url가진 여러 API 여러개 만들 필요 없음
+// 요청.params를 쓰면 유저가 파라미터에 넣은 데이터값 가져올 수 있음(여기선 aa에 해당하는 값 가져옴)
+app.get('/detail/:aa', async (요청,응답)=>{  // 유저가 : 뒤에 아무거나 입력해도 이거 실행
+  
+  //이 데이터 가진 document 1개 찾아옴. 여러개면 맨 앞에 1개만 가져옴
+  let result = await db.collection('post').findOne({ _id : new ObjectId(요청.params.aa)  }) 
+  console.log(result)
 
+  응답.render('detail.ejs', { post: result }) //유저가 /detail/5로 접속하면 _id가 5인 글내용을 ejs파일로 보내기
+
+})
 
 

@@ -94,13 +94,12 @@ app.post('/add', async (요청, 응답)=> {
 //유저가 /detail/어쩌구 접속하면 {_id:어쩌구}글을 db에서 찾아서 ejs파일에 박아서 유저에게 보내줄거임
 //URL파라미터 문법 사용하면 비슷한 url가진 여러 API 여러개 만들 필요 없음
 // 요청.params를 쓰면 유저가 파라미터에 넣은 데이터값 가져올 수 있음(여기선 aa에 해당하는 값 가져옴)
-app.get('/detail/:aa', async (요청,응답)=>{  // 유저가 : 뒤에 아무거나 입력해도 이거 실행
+app.get('/detail/:id', async (요청,응답)=>{  // 유저가 : 뒤에 아무거나 입력해도 이거 실행
   
   //이 데이터 가진 document 1개 찾아옴. 여러개면 맨 앞에 1개만 가져옴
-  let result = await db.collection('post').findOne({ _id : new ObjectId(요청.params.aa)  }) 
+  let result = await db.collection('post').findOne({ _id : new ObjectId(요청.params.id)  }) 
   console.log(result)
-
-  응답.render('detail.ejs', { post: result }) //유저가 /detail/5로 접속하면 _id가 5인 글내용을 ejs파일로 보내기
+  응답.render('detail.ejs', { post : result }) //유저가 /detail/5로 접속하면 _id가 5인 글내용을 ejs파일로 보내기
 
 })
 

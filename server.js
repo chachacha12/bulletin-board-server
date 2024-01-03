@@ -137,3 +137,15 @@ app.put('/edit', async (요청,응답)=>{
   응답.redirect('/list')
 })
   
+
+//delete요청 받았을시, 글 삭제해주는 작업
+app.delete('/delete', async (요청,응답)=>{  
+
+  console.log(요청.query) 
+
+  //db에서 글 삭제해주는 로직
+  await db.collection('post').deleteOne({_id : new ObjectId(요청.query.docid)})
+  응답.send('삭제완료')
+
+
+})

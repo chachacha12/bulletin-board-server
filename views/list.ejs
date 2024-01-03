@@ -17,12 +17,42 @@
             <h4>
                 <a href="/detail/<%= posts[i]._id %>"><%= posts[i].title %>
                 </a>
+
                 <a href="/edit/<%= posts[i]._id %>">✏️</a>
+                <span class="delete" data-id="<%= posts[i]._id %>">🗑️</span>
             </h4>
             <p> <%= posts[i].content %> </p>
         </div>
       <% } %>
     </div> 
+
+    <script>
+      //ajax쓰면 새로고침 없이 서버로 get요청해줌 / 첫번째 글의 삭제버튼
+      document.querySelectorAll('.delete')[0].addEventListener('click', function(e){
+        fetch('/delete?docid='+e.target.dataset.id,{
+          method : 'DELETE',
+        })
+      })
+
+      //두번째 글의 삭제버튼
+      document.querySelectorAll('.delete')[1].addEventListener('click', function(e){
+        fetch('/delete?docid='+e.target.dataset.id,{
+          method : 'DELETE',
+        })
+      })
+      //세번째 글의 삭제버튼
+      document.querySelectorAll('.delete')[2].addEventListener('click', function(e){
+        fetch('/delete?docid='+e.target.dataset.id,{
+          method : 'DELETE',
+        })
+      })
+
+
+
+
+
+    </script>
+
   
   </body>
 </html>

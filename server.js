@@ -1,21 +1,25 @@
+//http://localhost:8080/list
 //아래 두 줄은 이제부터 express 라이브러리 사용하겠다는 뜻. 그냥 써두면 됨
 const express = require('express')
 const app = express() 
+//몽고디비 연결을 위한 작업
+const { MongoClient, ObjectId } = require('mongodb')
+//아래는 html파일의 form태크에서 PUT, DELETE 등의 api를 이쁘게 써줄거면 필요한 작업 - 이거전에 npm install 어쩌구도 해줘야함
+const methodOverride = require('method-override')
 
+///아래는 html파일의 form태크에서 PUT, DELETE 등의 api를 이쁘게 써줄거면 필요한 작업
+app.use(methodOverride('_method'))
 //폴더를 server.js에 등록해두어야 폴더안의 css, js파일, 이미지 파일 등의 파일들을 html에서 사용가능 
 app.use(express.static(__dirname+'/public'))
-
 //ejs세팅끝 - (html문서에 DB데이터 꽂기위한 작업)
 //html파일에 데이터 넣고 싶으면 .ejs파일로 만들면 가능. html파일과 거의 같다고 보면됨(views폴더 만들고 그 안에 넣는게 국룰)
 app.set('view engine','ejs')
-
 //클라이언트에서 보낸 데이터 서버에서 받아보려면 이거필요 즉, 요청.body쓰려면 이거 필요 - 그냥 필수적으로 쓰고 시작하면됨
 app.use(express.json())
 app.use(express.urlencoded({extended:true}))
 
 
 //몽고디비를 서버와 연결해주는 코드 - url값은 몽고디비 -database- connect-drivers에 있는 링크넣기. 그후 내 db접속용 아이디+비번 링크중간에 넣기
-const { MongoClient, ObjectId } = require('mongodb')
 let db
 const url = 'mongodb+srv://chachacha:chaminwoo0106!@cluster0.az9nsfq.mongodb.net/?retryWrites=true&w=majority'
 new MongoClient(url).connect().then((client)=>{
@@ -103,4 +107,33 @@ app.get('/detail/:id', async (요청,응답)=>{  // 유저가 : 뒤에 아무거
 
 })
 
+//글 수정페이지로 이동하는 작업
+app.get('/edit/:id', async (요청,응답)=>{  
 
+  let result = await db.collection('post').findOne({ _id : new ObjectId(요청.params.id)})
+  console.log(result)
+  응답.render('edit.ejs', {result : result})
+  
+})
+
+
+//글 수정요청 받으면 수정해주는 작업 (수정기능은 PUT 등을 쓰는데 이건 ajax나 외부라이브러리 써야해서.. 나중에 배울거임)
+app.put('/edit', async (요청,응답)=>{  
+
+  //db의 데이터 수정해주는 로직 - 첫 {}안에는 수정할 document정보 넣기, 두번째 {}에는 덮어쓸 내용넣기
+  // $set은 덮어쓰기고 $inc는 +나-해줄수 있음. $mul은 곱셈가능. $unset은 필드값 삭제(근데 이건 거의 안씀)
+  let result = await db.collection('post').updateOne({ _id : new ObjectId(요청.body.id)},
+    {$set : {title : 요청.body.title, content : 요청.body.content }}
+  )
+
+// 1. document 하나 수정은 updateOne()
+// 2. document 여러개 수정은 updateMany()
+// 3. $set / $inc 등으로 수정방법 결정가능
+// 4. updateMany 쓸 때는 조건식써서 document 필터링 가능
+// 5. 서버에 정보가 없으면 유저에게 보내라고 하거나 db에서 출력하기
+// 6. method-oerride 쓰면 <form>에서 PUT/DELETE 요청 가능
+
+  console.log(result) //result에는 수정결과 어떻게 되었는지 등 들어있음
+  응답.redirect('/list')
+})
+  

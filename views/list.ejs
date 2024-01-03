@@ -27,25 +27,27 @@
     </div> 
 
     <script>
-      //ajax쓰면 새로고침 없이 서버로 get요청해줌 / 첫번째 글의 삭제버튼
-      document.querySelectorAll('.delete')[0].addEventListener('click', function(e){
-        fetch('/delete?docid='+e.target.dataset.id,{
-          method : 'DELETE',
-        })
-      })
 
-      //두번째 글의 삭제버튼
-      document.querySelectorAll('.delete')[1].addEventListener('click', function(e){
-        fetch('/delete?docid='+e.target.dataset.id,{
-          method : 'DELETE',
+      for(let i=0; i< ' <%= posts.length %>'; i++){
+        //ajax쓰면 새로고침 없이 서버로 get요청해줌 / 첫번째 글의 삭제버튼
+        document.querySelectorAll('.delete')[0].addEventListener('click', function(e){
+          fetch('/delete?docid='+e.target.dataset.id,{
+            method : 'DELETE',
+          })
+          .then( (r)=>r.text())  //이거두줄 쓰면 서버에서 보내준 응답값을 확인가능
+          .then( (r)=> { console.log(r) })
+            //위에서 서버로부터 받은 데이터(r)를 이용해서 여기서 코드짜서 새 html 페이지를
+            //클라이언트 사이드에서 동적 생성 가능함.(클라이언트 사이드 렌더링)
+          .then( (r)=> { 
+            //삭제 완료되었을때 새로고침해야 버튼 사라지는게 싫어서, 그냥 버튼 안보이게함
+            e.target.parentElement.parentElement.style.display = 'none'
+          })
+          
         })
-      })
-      //세번째 글의 삭제버튼
-      document.querySelectorAll('.delete')[2].addEventListener('click', function(e){
-        fetch('/delete?docid='+e.target.dataset.id,{
-          method : 'DELETE',
-        })
-      })
+      }
+
+     
+  
 
 
 

@@ -51,12 +51,8 @@ app.get('/news', (요청, 응답)=> {
 
 //컬렉션의 모든 document 출력하는방법!! -> 그냥 외워두기 
 app.get('/list', async (요청, 응답)=> {
+
     let result = await db.collection('post').find().toArray() //await을 써야 다음줄 안넘어가고 실행 기다림
-    
-    //ejs파일을 유저에게 보내줄때 render 사용함. ejs파일 경로값 넣기. 기본 경로는 views폴더로 되어서 views폴더 안에 있는 파일은 그냥 이름만 적으면됨
-    // 서버데이터를 ejs파일에 넣으려면, 
-    // 1. ejs파일로 데이터 전송 (2번째 인자에 object자료형으로 넣기)
-    // 2. ejs 파일 안에서 <%=데이터이름%> 
     응답.render('list.ejs', {posts : result} )
 })
 
@@ -146,6 +142,26 @@ app.delete('/delete', async (요청,응답)=>{
   //db에서 글 삭제해주는 로직
   await db.collection('post').deleteOne({_id : new ObjectId(요청.query.docid)})
   응답.send('삭제완료')
-
-
 })
+
+
+// 페이지네이션 - 1,2,3...등등 페이지 바로가기 버튼 만들기 가능.
+//url파라미터이용
+//근데 skip()은 인자값이 엄청 커지면 되게 느려지는 단점 존재.
+app.get('/list/:id', async (요청, 응답)=> {
+  
+  let result = await db.collection('post').find().skip( (요청.params.id-1) * 5).limit(5).toArray()  //몇개 skip하고 다음 5개 가져옴  응답.render('list.ejs', {posts : result} )
+  응답.render('list.ejs', {posts : result} )
+})
+
+
+//페이지네이션 - 다음페이지 버튼만 가능 (빠르다는 장점. but 바로 다음 페이지로만 이동 가능)
+app.get('/list/next/:id', async (요청, 응답)=> {
+  let result = await db.collection('post').find( {_id : {$gt : new ObjectId(요청.params.id) }} ).limit(5).toArray()  
+  응답.render('list.ejs', {posts : result} )
+})
+
+//그래서 페이지네이션에서 혹시 유저가 1에서 5페이지 가는 기능 만들거라, 글 순서가 중요하면, 그냥
+// 1. ObjectId순으로 정렬가능
+// 2. 날짜기록해서 날짜순 정렬가능
+// 이렇게 2가지 주로 이용하는듯.  근데 사실 글 순서가 중요한 서비스 별로 없음.

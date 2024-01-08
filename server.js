@@ -6,6 +6,9 @@ const app = express()
 const { MongoClient, ObjectId } = require('mongodb')
 //아래는 html파일의 form태크에서 PUT, DELETE 등의 api를 이쁘게 써줄거면 필요한 작업 - 이거전에 npm install 어쩌구도 해줘야함
 const methodOverride = require('method-override')
+//db에 유저의 비밀번호를 bcrypt알고리즘으로 해쉬 암호화 하기위한 셋팅
+const bcrypt = require('bcrypt')
+
 
 ///아래는 html파일의 form태크에서 PUT, DELETE 등의 api를 이쁘게 써줄거면 필요한 작업
 app.use(methodOverride('_method'))
@@ -17,6 +20,32 @@ app.set('view engine','ejs')
 //클라이언트에서 보낸 데이터 서버에서 받아보려면 이거필요 즉, 요청.body쓰려면 이거 필요 - 그냥 필수적으로 쓰고 시작하면됨
 app.use(express.json())
 app.use(express.urlencoded({extended:true}))
+
+
+//passport 라이브러리 셋팅 (jwt나 세션, oauth등을 쉽게 사용하게 해줌-여기선 세션 사용함)
+const session = require('express-session')
+const passport = require('passport')
+const LocalStrategy = require('passport-local')
+const MongoStore = require('connect-mongo') //유저 로그인시 생성되는 세션 document를 몽고db에 자동 저장해주기위한 셋팅
+
+
+app.use(passport.initialize())
+app.use(session({
+  secret: '암호화에 쓸 비번', //유저들에게 보낼 세션id를 이 비번으로 암호화암. 이거 털리면 개인정보 다 털릴듯
+  resave : false,  //유저가 서버로 요청할때마다 세션 갱신할건지임. 보통 false함
+  saveUninitialized : false,  //로그인 안해도 세션 만들것인지임. 보통 false함
+  cookie : { maxAge : 60 * 60 * 1000 },
+  store : MongoStore.create({
+    mongoUrl : 'mongodb+srv://chachacha:chaminwoo0106!@cluster0.az9nsfq.mongodb.net/?retryWrites=true&w=majority',  //db접속용 url 적기
+    dbName : 'forum' //세션 document를 저장해줄 db이름 적기
+  })
+
+}))
+
+app.use(passport.session()) 
+////////////////////////////////////////////////////////
+
+
 
 
 //몽고디비를 서버와 연결해주는 코드 - url값은 몽고디비 -database- connect-drivers에 있는 링크넣기. 그후 내 db접속용 아이디+비번 링크중간에 넣기
@@ -165,3 +194,105 @@ app.get('/list/next/:id', async (요청, 응답)=> {
 // 1. ObjectId순으로 정렬가능
 // 2. 날짜기록해서 날짜순 정렬가능
 // 이렇게 2가지 주로 이용하는듯.  근데 사실 글 순서가 중요한 서비스 별로 없음.
+
+
+//passport라이브러리로 로그인시 유저가 제출한 id. 비번을 db에 있는 값과 비교검사하는 코드임 
+//이 코드 실행시키고 싶으면 passport.authenticate('local')() 사용하기
+//id, 비번말고 다른 값들도 받아서 검사하고 싶으면 passReqToCallback 옵션 찾아보기
+passport.use(new LocalStrategy(async (입력한아이디, 입력한비번, cb) => {
+  //이 아래 코드들을 try catch로 묶어서 예외처리해도 좋을듯
+  let result = await db.collection('user').findOne({ username : 입력한아이디})
+  if (!result) {
+    return cb(null, false, { message: '아이디 DB에 없음' })
+  }
+
+  //bcrypt라이브러리에 있는 함수 (해시 전 비번과 해시된 비번 입력시, 둘 비교해줌. 해시전 비번을 해시한 값과 해시값 같으면 true)
+  if (await bcrypt.compare(입력한비번, result.password)) {  
+    return cb(null, result)
+  } else {
+    return cb(null, false, { message: '비번불일치' });
+  }
+}))
+
+//로그인성공하면 세션 만들어줌// done()안에 있는 내용 기록된 세션 document를 db에 만들어줌. 그리고 쿠키도 알아서 유저에게 보내줌
+//요청.logIn()쓰면 자동실행됨
+passport.serializeUser((user, done) => {
+  process.nextTick(() => { //아래코드를 비동기적으로 처리해줌 (근데 아래코드가 db저장코드일텐데 사실 db저장은 알아서 비동기처리됨. 그래서 이거 없어도되긴함)
+    //아래코드덕에 이제 로그인시 세션 document를 발행해줌. 그리고 그 docu의 _id를 쿠키에 적어 유저에게 보내줌
+    //세션 유효기간 설정없으면 자동으로 2주임. (2주동안 로그인상태 유지)
+    done(null, { id: user._id, username: user.username }) //세션에 저장해줄 내용(objectid와 유저아이디 저장)
+  })
+})
+
+
+//유저가 세션id담긴 쿠키 보내면 db에 있는지, 유효기간 괜찮은지 등등 분석해주는 코드
+//쿠키 이상없으면 현재 로그인된 유저정보 알려줌
+//이 코드덕에 이제 아무 api에서나 요청.user 라는 코드 쓰면 현재 로그인된 유저의 정보를 출력가능함!! (이거 밑에 코드들만 요청.user가능할거임- 이 코드 밑에서 api기능개발하기)
+//근데 deserializeUser 이 함수는 세션id담긴 쿠키가진 유저가 요청 날릴때마다 실행됨..비효율적..그래서 메인 페이지 갈때 등엔 이거 코드 안돌게도 가능. (특정 api에서만 동작하게 가능 - 구글찾아보기) 
+//그래도 요청이 너무 많아서 db가 부담되면? -> redis 사용가능 (connect-redis 찾아보기)
+//세션말고 그냥 jwt가 좋다면 jwt도 passport로 구현가능. 예제 검색해보기
+passport.deserializeUser(async (user, done) => {
+  //세션에 있는 유저정보 받아서 유저컬렉션에 있는 유저정보를 가져올거임 (세션정보는 좀 오래되어서 유저이름 같은거 바꼈을수 있기에)
+  let result = await db.collection('user').findOne({_id : new ObjectId(user.id)})
+  delete result.password //비번항목은 result에서 삭제하기
+  process.nextTick(() => {
+    return done(null, result) //여기 넣은값이 요청.user에 들어감
+  })
+})
+
+
+
+//유저가 /login경로로 get요청보내면 로그인 진행하는 페이지를 보여줌
+app.get('/login', async (요청, 응답)=> {
+  console.log(요청.user)
+  응답.render('login.ejs')
+})
+
+
+//유저가 /login경로로 post요청보내면,
+//제출한 아이디 비번이 db에 있는지 확인하고 있으면 세션만들어줌
+app.post('/login', async (요청, 응답, next)=> {
+  //클라에서 받은 id, 비번과 db에 있는 id,비번 비교검사 했다가 에러나면 error인자에 값 들어옴
+  //성공시 user인자에 유저정보 들어옴. 실패시엔 그 이유가 info인자에 들어옴
+  passport.authenticate('local', (error, user, info)=> {  
+    //예외처리해주기
+    if(error) return 응답.status(500).json(error)  //에러가 났을때임//  .json이라고 쓰면 array나 object 데이터를 유저에게 보내줄 수 있음
+    if(!user) return 응답.status(401).json(info.message) //해당 유저가 없을시
+    요청.logIn(user, (err)=>{  //비교성공했을때 
+      if(err) return next(err)
+      응답.redirect('/') //로그인 완료시 실행할 코드
+    })
+   })(요청, 응답, next)
+})
+
+
+//로그인 기능만든거 이용해서 마이페이지 만들기
+app.get('/mypage', async (요청, 응답)=> {
+  console.log(요청.user)
+
+  if(요청.user){
+    응답.render('mypage.ejs', {user : 요청.user })
+  }else{
+    응답.send('로그인 하세요')
+  }
+})
+
+//회원가입 페이지 보내줌
+app.get('/register', async (요청, 응답)=> {
+  응답.render('register.ejs')
+})
+
+//유저가 /register 경로로 post요청 보내면 회원가입 시켜줄거임
+app.post('/register', async (요청, 응답)=> {
+
+  let 해시 = await bcrypt.hash(요청.body.password, 10)  //보통 10정도 넣으면 적당히 많이 꼬아서 해슁함
+  console.log(해시)
+
+  await db.collection('user').insertOne({
+    username : 요청.body.username,
+    password : 해시
+  })
+  응답.redirect('/')  //메인페이지로 이동
+  //근데 위에처럼하고 끝내지말고 username빈칸이거나, 이미 db에 있는 username이거나, 비번 짧은경우 등 예외처리도 해주기 꼭
+})
+

@@ -8,6 +8,9 @@ const { MongoClient, ObjectId } = require('mongodb')
 const methodOverride = require('method-override')
 //db에 유저의 비밀번호를 bcrypt알고리즘으로 해쉬 암호화 하기위한 셋팅
 const bcrypt = require('bcrypt')
+//환경변수를 저장해줄 파일을 따로 만들기 위한 셋팅
+require('dotenv').config()
+
 
 
 ///아래는 html파일의 form태크에서 PUT, DELETE 등의 api를 이쁘게 써줄거면 필요한 작업
@@ -50,13 +53,13 @@ app.use(passport.session())
 
 //몽고디비를 서버와 연결해주는 코드 - url값은 몽고디비 -database- connect-drivers에 있는 링크넣기. 그후 내 db접속용 아이디+비번 링크중간에 넣기
 let db
-const url = 'mongodb+srv://chachacha:chaminwoo0106!@cluster0.az9nsfq.mongodb.net/?retryWrites=true&w=majority'
+const url = process.env.DB_URL
 new MongoClient(url).connect().then((client)=>{
   console.log('DB연결성공')
   db = client.db('forum') //내 db이름 넣기
 
-  //아래 3줄 쓰면 서버 띄우기끝. 내 컴퓨터 포트를 오픈하는 명령
-  app.listen(8080, () => {
+  //아래 3줄 쓰면 서버 띄우기끝. 내 컴퓨터 포트를 오픈하는 명령. process.env.PORT이건 환경변수 저장해둔 .env파일에 있는값 가져오는법
+  app.listen(process.env.PORT, () => {
     console.log('http://localhost:8080 에서 서버 실행중')
   })
 
@@ -66,9 +69,21 @@ new MongoClient(url).connect().then((client)=>{
 ///////////////////////
 
 
+//미들웨어 - 여러 api등에서 공통으로 들어가는 코드는 빼서 이렇게 작성해두고 사용가능
+function checkLogin(요청, 응답, next){
+  if(!요청.user){
+    응답.send('로그인하세요') //여기서 응답하게 되면 밑에 코드들 (next()등)은 실행 안될거임. 참고로 알기.
+  }
+  next()
+}
+
+
+//이렇게 적으면 이 코드 밑에 있는 api들은 모두 checkLogin미들웨어 적용됨.
+//app.use(checkLogin) 
+
 
 //누가 메인페이지 접속시
-app.get('/', (요청, 응답)=> {
+app.get('/', checkLogin, (요청, 응답)=> {
     응답.sendFile(__dirname + '/index.html') //이건 웹페이지를 하나 보내줌. 인자로 보낼 웹페이지 경로값
 })
 

@@ -311,3 +311,10 @@ app.post('/register', async (요청, 응답)=> {
   //근데 위에처럼하고 끝내지말고 username빈칸이거나, 이미 db에 있는 username이거나, 비번 짧은경우 등 예외처리도 해주기 꼭
 })
 
+
+
+app.get('/search', async (요청, 응답)=>{
+  let result = await db.collection('post').find({title : {$regex : 요청.query.val} }).toArray()
+  응답.render('search.ejs', {글목록 : result})
+}) 
+

@@ -10,6 +10,9 @@
 
     <%- include('nav.ejs') %>
 
+    <input class="search">
+    <button class="search-send">검색</button> 
+
     <div class="white-bg">
 
       <% for(let i=0; i< posts.length; i++) { %>
@@ -48,14 +51,13 @@
           
         })
       }
+    </script>
 
-     
-  
-
-
-
-
-
+    <script>
+      document.querySelector('.search-send').addEventListener('click', function(){
+        let 입력한거 = document.querySelector('.search').value
+        location.href = '/search?val=' + 입력한거
+      })
     </script>
 
   

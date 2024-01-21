@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body class="grey-bg">
+    <%- include('nav.ejs') %>
+    <%= JSON.stringify(result) %>
+    
+
+    <script src="https://cdn.jsdelivr.net/npm/socket.io@4.7.2/client-dist/socket.io.min.js"></script>
+    <script>
+
+      const socket = io() 
+      socket.emit('age', '20')  
+    
+      
+      socket.on('name', (data) => {
+        console.log(data)
+      })
+
+
+    </script>
+    
+  
+  </body>
+</html>

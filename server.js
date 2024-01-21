@@ -1,3 +1,14 @@
+/*
+응답.send('로그인하세요') //이런 send()는 웹과 서버가 통신할때 씀..html문서를 보내주는 명령인듯.
+
+그냥 데이터만 서버가 보내주고 클라이언트에서 페이지 만드는 클라이언트 사이드 렌더링 할거면 (앱과 통신..)
+
+응답.json({ name : 'black shoes'}) 등등 쓰기. (db에서 데이터 뽑아서 여기에 넣어주면됨)
+
+*/
+
+
+
 //http://localhost:8080/list
 //아래 두 줄은 이제부터 express 라이브러리 사용하겠다는 뜻. 그냥 써두면 됨
 const express = require('express')
@@ -8,9 +19,19 @@ const { MongoClient, ObjectId } = require('mongodb')
 const methodOverride = require('method-override')
 //db에 유저의 비밀번호를 bcrypt알고리즘으로 해쉬 암호화 하기위한 셋팅
 const bcrypt = require('bcrypt')
+
+//채팅방 만들어주려고 soket.io라이브러리 쓰기위한 작업들
+const { createServer } = require('http')
+const { Server } = require('socket.io')
+const server = createServer(app)
+const io = new Server(server) 
+
+
+
+
+
 //환경변수를 저장해줄 파일을 따로 만들기 위한 셋팅
 require('dotenv').config()
-
 
 
 ///아래는 html파일의 form태크에서 PUT, DELETE 등의 api를 이쁘게 써줄거면 필요한 작업
@@ -59,7 +80,7 @@ new MongoClient(url).connect().then((client)=>{
   db = client.db('forum') //내 db이름 넣기
 
   //아래 3줄 쓰면 서버 띄우기끝. 내 컴퓨터 포트를 오픈하는 명령. process.env.PORT이건 환경변수 저장해둔 .env파일에 있는값 가져오는법
-  app.listen(process.env.PORT, () => {
+  server.listen(process.env.PORT, () => {
     console.log('http://localhost:8080 에서 서버 실행중')
   })
 
@@ -115,7 +136,7 @@ app.get('/write', (요청, 응답)=> {
 
 //클라이언트에서 /add로 post메소드로 보낸 데이터를 서버가 받아서 db에 저장해주는 작업
 app.post('/add', async (요청, 응답)=> {
-  console.log(요청.body)  //이러면 자바스크립트 object자료형으로 출력됨 
+  console.log(요청.user)  //이러면 자바스크립트 object자료형으로 출력됨 
 
   //try문 실행하다가 혹시 에러나면 catch문 수행 (db에 데이터 넣는 로직 등 혹시 에러 가능한 곳에 사용)
   try {
@@ -124,7 +145,15 @@ app.post('/add', async (요청, 응답)=> {
       응답.send('제목 입력해라')
     }else{
       //db에 데이터 저장하는 법
-      await db.collection('post').insertOne({title : 요청.body.title, content : 요청.body.content} )
+      await db.collection('post').insertOne(
+        {
+          title : 요청.body.title, 
+          content : 요청.body.content,
+          //img : 요청.file.location,
+          user: 요청.user._id,
+          username : 요청.user.username
+        } 
+      )
       //유저가 무한대기상태에 빠질 수 있기에 서버기능 끝나면 항상 응답 보내주는게 좋음
       응답.redirect('/list') //redirect는 다른 페이지로 이동시켜줌
     }
@@ -140,12 +169,14 @@ app.post('/add', async (요청, 응답)=> {
 // 요청.params를 쓰면 유저가 파라미터에 넣은 데이터값 가져올 수 있음(여기선 aa에 해당하는 값 가져옴)
 app.get('/detail/:id', async (요청,응답)=>{  // 유저가 : 뒤에 아무거나 입력해도 이거 실행
   
+  //요청으로 받은 글의 id와 parendId필드값이 같은 댓글 목록들만 찾아서 가져와줌
+  let result2 = await db.collection('comment').find({ parentId : new ObjectId(요청.params.id)  }).toArray() 
   //이 데이터 가진 document 1개 찾아옴. 여러개면 맨 앞에 1개만 가져옴
   let result = await db.collection('post').findOne({ _id : new ObjectId(요청.params.id)  }) 
-  console.log(result)
-  응답.render('detail.ejs', { post : result }) //유저가 /detail/5로 접속하면 _id가 5인 글내용을 ejs파일로 보내기
+  응답.render('detail.ejs', { post : result, result2 : result2}) //유저가 /detail/5로 접속하면 _id가 5인 글내용을 ejs파일로 보내기
 
 })
+
 
 //글 수정페이지로 이동하는 작업
 app.get('/edit/:id', async (요청,응답)=>{  
@@ -184,7 +215,10 @@ app.delete('/delete', async (요청,응답)=>{
   console.log(요청.query) 
 
   //db에서 글 삭제해주는 로직
-  await db.collection('post').deleteOne({_id : new ObjectId(요청.query.docid)})
+  await db.collection('post').deleteOne({
+    _id : new ObjectId(요청.query.docid),
+    user : new ObjectId(요청.user._id)  //본인글만 삭제할 수 있도록 함
+  })
   응답.send('삭제완료')
 })
 
@@ -327,3 +361,55 @@ app.get('/search', async (요청, 응답)=>{
   응답.render('search.ejs', {글목록 : result})
 }) 
 
+
+//댓글기능 api임.
+app.post('/comment', async (요청, 응답, next)=> {
+  await db.collection('comment').insertOne({
+    content : 요청.body.content,
+    writerId : new ObjectId(요청.user._id),
+    writer : 요청.user.username,
+    parentId: new ObjectId(요청.body.parentId)
+  })
+  //form으로 클라이언트에서 post요청후엔 원래 페이지 이동 자동으로됨. 그래서 back해줘야 그자리 그대로일거임
+  응답.redirect('back')
+})
+
+
+
+//채팅하기 버튼 눌렀을때
+app.get('/chat/request', async (요청, 응답)=>{
+  await db.collection('chatroom').insertOne({
+    member : [요청.user._id, new ObjectId(요청.query.writerId)],
+    date : new Date()
+  })
+  응답.redirect('/chat/list')
+})
+
+
+//내가 속한 채팅방 목록들 보여주는 페이지 보내주기
+app.get('/chat/list', async (요청, 응답)=>{
+  let result = await db.collection('chatroom').find({ member : 요청.user._id }).toArray()
+  응답.render('chatList.ejs', {글목록 : result})
+}) 
+
+
+//채팅방 상세페이지 보내주기
+app.get('/chat/detail/:id', async (요청, 응답)=>{
+
+  //현재 로그인중인 유저가 이 채팅방 docu에 속해 있는지 조건문으로 검사 나중에 따로 꼭 해주기. 안그럼 개나소나 들어올수있음
+
+  //채팅방 찾아서 가져와줌
+  let result = await db.collection('chatroom').findOne({ _id : new ObjectId(요청.params.id)})
+  응답.render('chatDetail.ejs', {result : result})
+}) 
+
+
+//클라이언트에서 유저가 웹소켓 연결하면 여기 코드 실행해줌
+io.on('connection',(socket) => {
+ 
+  socket.on('age', (data) => {
+    console.log('유저가 보낸거 : ', data)
+    io.emit('name', 'kim') 
+  })
+ 
+}) 

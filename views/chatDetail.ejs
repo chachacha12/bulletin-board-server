@@ -10,16 +10,38 @@
     <%= JSON.stringify(result) %>
     
 
+    <div class="detail-bg">
+        <div class="chat-screen">
+          <div class="chat-box"><span>안녕하세요</span></div>
+          <div class="chat-box"><span>안녕하세요</span></div>
+          <div class="chat-box mine"><span>안녕하세요</span></div>
+        </div>
+      </div>
+      <div class="chat-form">
+        <input class="chat-input">
+        <button class="chat-button">전송</button>
+    </div> 
+
+    
     <script src="https://cdn.jsdelivr.net/npm/socket.io@4.7.2/client-dist/socket.io.min.js"></script>
     <script>
-
+      ///채팅방 상세페이지에 유저가 들어오면 소켓 시작해줌
       const socket = io() 
-      socket.emit('age', '20')  
-    
       
-      socket.on('name', (data) => {
-        console.log(data)
+      //서버에게 룸이름이 현재 클릭한 채팅방 docu의 id인 룸에 조인하게 해달라는 요청
+      socket.emit('ask-join', '<%= result._id %>')
+      
+      //클라이언트에서 채팅 전송 버튼 누르면 서버로 메시지와 룸이름 등등 데이터들 object나 array타입으로 전송
+      document.querySelector('.chat-button').addEventListener('click', function () {
+        let 작성한거 = document.querySelector('.chat-input').value
+        socket.emit('message-send', { room: '<%= result._id %>', msg: 작성한거 })
       })
+
+      //서버가 보내준 데이터 받아서 채팅 데이터 html을 html에 꽂아줌 (같은 룸에 있으므로 유저는 이 메시지 받을 수 있음)
+      socket.on('message-broadcast', (data) => {
+        document.querySelector('.chat-screen')
+        .insertAdjacentHTML('beforeend', `<div class="chat-box"><span>${data}</span></div>`)
+      })  
 
 
     </script>

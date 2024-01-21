@@ -404,12 +404,31 @@ app.get('/chat/detail/:id', async (요청, 응답)=>{
 }) 
 
 
+
+
 //클라이언트에서 유저가 웹소켓 연결하면 여기 코드 실행해줌
 io.on('connection',(socket) => {
- 
+  
+  //유저가 보낸 메시지를 서버가 받음 (age라는 이름으로 보낸 데이터값 받음)
   socket.on('age', (data) => {
-    console.log('유저가 보낸거 : ', data)
-    io.emit('name', 'kim') 
+    //console.log('유저가 보낸거 : ', data)
+    io.emit('name', 'kim')  //서버가 모든 유저에게 메시지 보내주는 문법임
   })
+
+  //유저가 보낸 데이터 받음 (룸에 조인해달라는 요청이 오면 조인해줌)
+  socket.on('ask-join', (data) => {
+    //socket.request.session 이거써서 현재 로그인중인 유저정보 가져와서 if문으로 채팅방 데이터안의 멤버중에 있는지 검사하기.
+    //강의에선 생략했지만 꼭 하기
+    socket.join(data)
+  }) 
+
+  //유저가 보낸 데이터 받음 (message-send라는 이름으로 보낸 데이터를 받음. 메시지안엔 채팅내용과 어느 룸에 데이터 뿌려줄지 있음)
+  socket.on('message-send', async (data) => {
+    
+    //채팅내용 영구저장할거면 여기서 db에 저장로직 적기 (댓글기능과 비슷하게 저장하면됨 - 채팅내용, 날짜, 작성자, 부모docuid 등 저장해주기)
+    
+
+    io.to(data.room).emit('message-broadcast', data.msg) //특정 룸에만 서버가 메시지 보내주는 문법임.
+  }) 
  
 }) 

@@ -75,9 +75,17 @@ app.use(passport.session())
 //몽고디비를 서버와 연결해주는 코드 - url값은 몽고디비 -database- connect-drivers에 있는 링크넣기. 그후 내 db접속용 아이디+비번 링크중간에 넣기
 let db
 const url = process.env.DB_URL
+let changeStream //몽고db 변경사항 체크해주기 위한 변수
 new MongoClient(url).connect().then((client)=>{
   console.log('DB연결성공')
   db = client.db('forum') //내 db이름 넣기
+
+  //몽고db를 계속 감지하고 있다가 변동사항 있을때 그거에 맞춰서 반응해줌 (여기선 새 글 생길때마다 그 글 유저에게 보내줌)
+  const 찾을문서 = [
+    { $match: { operationType: 'insert' } } // 새로 db에 생성될때만 감지해줄거임
+  ]
+  changeStream = db.collection('post').watch(찾을문서)
+
 
   //아래 3줄 쓰면 서버 띄우기끝. 내 컴퓨터 포트를 오픈하는 명령. process.env.PORT이건 환경변수 저장해둔 .env파일에 있는값 가져오는법
   server.listen(process.env.PORT, () => {
@@ -431,4 +439,34 @@ io.on('connection',(socket) => {
     io.to(data.room).emit('message-broadcast', data.msg) //특정 룸에만 서버가 메시지 보내주는 문법임.
   }) 
  
-}) 
+})   
+
+
+
+//실시간 데이터 푸시1 (SSE 사용) - http연결 끊기지 않고 서버가 유저에게 계속 데이터 실시간으로 보내주는 기능임. 웹소켓과 비슷
+//난 요청 안했는데 다른 유저가 글 쓰면 자동으로 서버에서 내 쪽에도 새로운 글 실시간으로 보내주는 기능
+app.get('/stream/list', (요청, 응답) => {
+
+  응답.writeHead(200, {
+    "Connection": "keep-alive",
+    "Content-Type": "text/event-stream", 
+    "Cache-Control": "no-cache", 
+  })
+
+
+  //몽고db 변경사항 계속 감지하다가 변화있을때 on()코드 실행함
+  changeStream.on('change', (result) => {   
+    console.log('DB변동생김')
+    //유저에게 msg라는 이름으로 data 바로 쏴줌 (/stream/list 여기에 get요청해서 현재 연결 keep-alive되어있는 유저들만)
+    응답.write('event: msg\n')
+    응답.write(`data: ${JSON.stringify(result.fullDocument)}\n\n`) // backtick기호임. ~ 이것과 option키 누르면됨
+  })
+});
+
+
+
+
+
+
+
+
